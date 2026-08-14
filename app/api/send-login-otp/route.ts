@@ -6,35 +6,44 @@ import VerificationEmail from "@/emails/VerificationEmail";
 
 export async function POST(request: Request) {
   try {
-    await dbConnect();
+    console.log("STEP 1: Route started");
 
-    const body = await request.json();
-
-    const { identifier, password } = body;
-
-    if (
-      !identifier ||
-      typeof identifier !== "string" ||
-      !identifier.trim()
-    ) {
+    if (!process.env.Mongo_url) {
       return Response.json(
         {
           success: false,
-          message: "Phone number is required",
+          message: "ERROR: Mongo_url environment variable is missing",
         },
-        { status: 400 }
+        { status: 500 }
       );
     }
 
-    if (
-      !password ||
-      typeof password !== "string" ||
-      !password.trim()
-    ) {
+    if (!process.env.RESEND_API_KEY) {
       return Response.json(
         {
           success: false,
-          message: "Password is required",
+          message: "ERROR: RESEND_API_KEY environment variable is missing",
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log("STEP 2: Environment variables found");
+
+    await dbConnect();
+
+    console.log("STEP 3: Database connected");
+
+    const body = await request.json();
+    const { identifier, password } = body;
+
+    console.log("STEP 4: Request body received");
+
+    if (!identifier || !password) {
+      return Response.json(
+        {
+          success: false,
+          message: "Phone number and password are required",
         },
         { status: 400 }
       );
@@ -49,6 +58,8 @@ export async function POST(request: Request) {
         { username: cleanIdentifier },
       ],
     });
+
+    console.log("STEP 5: User search completed");
 
     if (!user) {
       return Response.json(
@@ -70,6 +81,8 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log("STEP 6: Checking password");
+
     const isPasswordCorrect = await bcrypt.compare(
       password,
       user.password
@@ -85,56 +98,47 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log("STEP 7: Password correct");
+
     const otp = Math.floor(
       100000 + Math.random() * 900000
     ).toString();
 
-    const otpExpiry = new Date(
-      Date.now() + 5 * 60 * 1000
-    );
-
     user.verifyCode = otp;
-    user.verifyCodeExpiry = otpExpiry;
+    user.verifyCodeExpiry = new Date(Date.now() + 5 * 60 * 1000);
     user.loginOtpVerified = false;
 
     await user.save();
 
-    console.log("LOGIN OTP GENERATED FOR:", user.email);
+    console.log("STEP 8: OTP saved");
 
     const emailResponse = await resend.emails.send({
       from: "Kisan Inter College <onboarding@resend.dev>",
-      to: user.email,
+      to: "surya945514@gmail.com",
       subject: "Your Login Verification Code",
       react: VerificationEmail({
         username: user.username,
         otp,
+        type: "login",
       }),
     });
 
-    console.log("EMAIL RESPONSE:", emailResponse);
+    console.log("STEP 9: Email response received");
 
     if (emailResponse.error) {
-      console.error("RESEND EMAIL ERROR:", emailResponse.error);
-
       return Response.json(
         {
           success: false,
-          message:
-            emailResponse.error.message ||
-            "Failed to send OTP email",
+          message: `Email error: ${emailResponse.error.message}`,
         },
         { status: 500 }
       );
     }
 
-    return Response.json(
-      {
-        success: true,
-        message:
-          "OTP has been sent to your registered email",
-      },
-      { status: 200 }
-    );
+    return Response.json({
+      success: true,
+      message: "OTP sent successfully",
+    });
   } catch (error) {
     console.error("SEND LOGIN OTP ERROR:", error);
 
@@ -143,8 +147,8 @@ export async function POST(request: Request) {
         success: false,
         message:
           error instanceof Error
-            ? error.message
-            : "Failed to send login OTP",
+            ? `Server error: ${error.message}`
+            : "Unknown server error",
       },
       { status: 500 }
     );
