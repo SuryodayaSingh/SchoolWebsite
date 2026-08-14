@@ -10,11 +10,8 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    console.log("LOGIN OTP REQUEST BODY:", body);
-
     const { identifier, password } = body;
 
-    // Check required fields
     if (
       !identifier ||
       typeof identifier !== "string" ||
@@ -45,11 +42,6 @@ export async function POST(request: Request) {
 
     const cleanIdentifier = identifier.trim();
 
-    console.log(
-      "SEARCHING USER WITH IDENTIFIER:",
-      cleanIdentifier
-    );
-
     const user = await UserModel.findOne({
       $or: [
         { phone: cleanIdentifier },
@@ -68,7 +60,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Account should already be verified during signup
     if (!user.isVerified) {
       return Response.json(
         {
@@ -79,7 +70,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify password
     const isPasswordCorrect = await bcrypt.compare(
       password,
       user.password
@@ -95,17 +85,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate a new OTP for EVERY login
     const otp = Math.floor(
       100000 + Math.random() * 900000
     ).toString();
 
-    // OTP valid for 5 minutes
     const otpExpiry = new Date(
       Date.now() + 5 * 60 * 1000
     );
 
-    // Save fresh login OTP
     user.verifyCode = otp;
     user.verifyCodeExpiry = otpExpiry;
     user.loginOtpVerified = false;
@@ -114,10 +101,9 @@ export async function POST(request: Request) {
 
     console.log("LOGIN OTP GENERATED FOR:", user.email);
 
-    // Send OTP to registered email
     const emailResponse = await resend.emails.send({
       from: "Kisan Inter College <onboarding@resend.dev>",
-      to: "surya945514@gmail.com",
+      to: user.email,
       subject: "Your Login Verification Code",
       react: VerificationEmail({
         username: user.username,
@@ -128,10 +114,7 @@ export async function POST(request: Request) {
     console.log("EMAIL RESPONSE:", emailResponse);
 
     if (emailResponse.error) {
-      console.error(
-        "RESEND EMAIL ERROR:",
-        emailResponse.error
-      );
+      console.error("RESEND EMAIL ERROR:", emailResponse.error);
 
       return Response.json(
         {
