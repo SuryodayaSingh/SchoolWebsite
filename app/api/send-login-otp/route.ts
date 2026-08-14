@@ -6,38 +6,50 @@ import VerificationEmail from "@/emails/VerificationEmail";
 
 export async function POST(request: Request) {
   try {
-    console.log("STEP 1: Route started");
-
+    // 1. ENV CHECK
     if (!process.env.Mongo_url) {
       return Response.json(
-        {
-          success: false,
-          message: "ERROR: Mongo_url environment variable is missing",
-        },
+        { success: false, message: "Mongo_url missing" },
         { status: 500 }
       );
     }
 
     if (!process.env.RESEND_API_KEY) {
       return Response.json(
+        { success: false, message: "RESEND_API_KEY missing" },
+        { status: 500 }
+      );
+    }
+
+    // 2. DB CHECK
+    try {
+      await dbConnect();
+    } catch (error) {
+      console.error("DB ERROR:", error);
+      return Response.json(
         {
           success: false,
-          message: "ERROR: RESEND_API_KEY environment variable is missing",
+          message: `Database error: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
         },
         { status: 500 }
       );
     }
 
-    console.log("STEP 2: Environment variables found");
+    // 3. BODY CHECK
+    let body;
 
-    await dbConnect();
+    try {
+      body = await request.json();
+    } catch {
+      return Response.json(
+        { success: false, message: "Invalid request body" },
+        { status: 400 }
+      );
+    }
 
-    console.log("STEP 3: Database connected");
-
-    const body = await request.json();
     const { identifier, password } = body;
-
-    console.log("STEP 4: Request body received");
 
     if (!identifier || !password) {
       return Response.json(
@@ -49,24 +61,36 @@ export async function POST(request: Request) {
       );
     }
 
-    const cleanIdentifier = identifier.trim();
+    // 4. USER SEARCH
+    let user;
 
-    const user = await UserModel.findOne({
-      $or: [
-        { phone: cleanIdentifier },
-        { email: cleanIdentifier.toLowerCase() },
-        { username: cleanIdentifier },
-      ],
-    });
+    try {
+      const cleanIdentifier = identifier.trim();
 
-    console.log("STEP 5: User search completed");
+      user = await UserModel.findOne({
+        $or: [
+          { phone: cleanIdentifier },
+          { email: cleanIdentifier.toLowerCase() },
+          { username: cleanIdentifier },
+        ],
+      });
+    } catch (error) {
+      console.error("USER SEARCH ERROR:", error);
 
-    if (!user) {
       return Response.json(
         {
           success: false,
-          message: "User not found",
+          message: `User search error: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
         },
+        { status: 500 }
+      );
+    }
+
+    if (!user) {
+      return Response.json(
+        { success: false, message: "User not found" },
         { status: 404 }
       );
     }
@@ -81,12 +105,27 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("STEP 6: Checking password");
+    // 5. PASSWORD CHECK
+    let isPasswordCorrect;
 
-    const isPasswordCorrect = await bcrypt.compare(
-      password,
-      user.password
-    );
+    try {
+      isPasswordCorrect = await bcrypt.compare(
+        password,
+        user.password
+      );
+    } catch (error) {
+      console.error("PASSWORD ERROR:", error);
+
+      return Response.json(
+        {
+          success: false,
+          message: `Password check error: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
+        },
+        { status: 500 }
+      );
+    }
 
     if (!isPasswordCorrect) {
       return Response.json(
@@ -98,57 +137,85 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("STEP 7: Password correct");
-
+    // 6. GENERATE + SAVE OTP
     const otp = Math.floor(
       100000 + Math.random() * 900000
     ).toString();
 
-    user.verifyCode = otp;
-    user.verifyCodeExpiry = new Date(Date.now() + 5 * 60 * 1000);
-    user.loginOtpVerified = false;
+    try {
+      user.verifyCode = otp;
+      user.verifyCodeExpiry = new Date(
+        Date.now() + 5 * 60 * 1000
+      );
+      user.loginOtpVerified = false;
 
-    await user.save();
+      await user.save();
+    } catch (error) {
+      console.error("OTP SAVE ERROR:", error);
 
-    console.log("STEP 8: OTP saved");
-
-    const emailResponse = await resend.emails.send({
-      from: "Kisan Inter College <onboarding@resend.dev>",
-      to: "surya945514@gmail.com",
-      subject: "Your Login Verification Code",
-      react: VerificationEmail({
-        username: user.username,
-        otp,
-        type: "login",
-      }),
-    });
-
-    console.log("STEP 9: Email response received");
-
-    if (emailResponse.error) {
       return Response.json(
         {
           success: false,
-          message: `Email error: ${emailResponse.error.message}`,
+          message: `OTP save error: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
         },
         { status: 500 }
       );
     }
 
-    return Response.json({
-      success: true,
-      message: "OTP sent successfully",
-    });
+    // 7. SEND EMAIL
+    try {
+      const emailResponse = await resend.emails.send({
+        from: "Kisan Inter College <onboarding@resend.dev>",
+        to: "surya945514@gmail.com",
+        subject: "Your Login Verification Code",
+        react: VerificationEmail({
+          username: user.username,
+          otp,
+          type: "login",
+        }),
+      });
+
+      if (emailResponse.error) {
+        return Response.json(
+          {
+            success: false,
+            message: `Email error: ${emailResponse.error.message}`,
+          },
+          { status: 500 }
+        );
+      }
+    } catch (error) {
+      console.error("EMAIL SEND ERROR:", error);
+
+      return Response.json(
+        {
+          success: false,
+          message: `Email sending error: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
+        },
+        { status: 500 }
+      );
+    }
+
+    return Response.json(
+      {
+        success: true,
+        message: "OTP sent successfully",
+      },
+      { status: 200 }
+    );
   } catch (error) {
-    console.error("SEND LOGIN OTP ERROR:", error);
+    console.error("UNEXPECTED ERROR:", error);
 
     return Response.json(
       {
         success: false,
-        message:
-          error instanceof Error
-            ? `Server error: ${error.message}`
-            : "Unknown server error",
+        message: `Unexpected server error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       },
       { status: 500 }
     );
