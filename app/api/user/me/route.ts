@@ -6,12 +6,11 @@ import UserModel from "@/model/User";
 
 export async function GET() {
   try {
-    // Get logged-in user session
     const session = await getServerSession(authOptions);
 
     console.log("ME API SESSION:", session);
 
-    if (!session?.user?._id) {
+    if (!session?.user?.id) {
       return Response.json(
         {
           success: false,
@@ -24,9 +23,7 @@ export async function GET() {
     }
 
     // TEST USER
-    if (session.user._id === "test-admin") {
-      console.log("TEST ADMIN DETECTED");
-
+    if (session.user.id === "test-admin") {
       return Response.json(
         {
           success: true,
@@ -39,7 +36,6 @@ export async function GET() {
             isVerified: true,
             rollNumber: "TEST001",
             class: "B.Tech IT",
-
             grades: [
               {
                 subject: "Data Structures",
@@ -54,9 +50,7 @@ export async function GET() {
                 marks: 88,
               },
             ],
-
             halfYearlyGrades: [],
-
             attendance: {
               present: 42,
               total: 50,
@@ -69,13 +63,10 @@ export async function GET() {
       );
     }
 
-    // REAL USER
     await dbConnect();
 
-    const user = await UserModel.findById(session.user._id)
-      .select(
-        "-password -verifyCode -verifyCodeExpiry -loginOtpVerified"
-      )
+    const user = await UserModel.findById(session.user.id)
+      .select("-password -verifyCode -verifyCodeExpiry")
       .lean();
 
     if (!user) {

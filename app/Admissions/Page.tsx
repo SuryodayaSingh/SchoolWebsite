@@ -1,6 +1,9 @@
 function Admissions() {
     return(
         <>
+        <div>
+            Hello
+        </div>
         </>
     )
 }

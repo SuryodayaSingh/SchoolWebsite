@@ -59,15 +59,8 @@ export default function SignUpPage() {
             color: "#574f87",
           }}
         >
-          VENVO
+          Kisan Inter College
         </span>
-
-        <div className="flex justify-center items-center mt-1">
-          <span className="font-sans text-sm text-black">Your Clothes</span>
-          <span className="font-sans text-sm text-purple-800 ml-1">
-            Deserve Better
-          </span>
-        </div>
       </div>
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -78,8 +71,8 @@ export default function SignUpPage() {
             className="mt-3 text-indigo-800 text-sm font-sans"
             style={{ fontFamily: '"Archivo Black", sans-serif' }}
           >
-            <p>Sign up for Venvo</p>
-            <p>and manage your laundry with ease.</p>
+            <p>Sign up for KIC</p>
+            <p>and manage your School account with ease.</p>
           </div>
         </div>
 
