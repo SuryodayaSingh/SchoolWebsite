@@ -5,13 +5,37 @@ import { sendVerificationEmail } from "@/helpers/sendVerificationEmail";
 
 export async function POST(request: Request) {
   try {
+    console.log("1. SIGNUP STARTED");
+
     await dbConnect();
+    console.log("2. DATABASE CONNECTED");
 
     const { username, email, phone, password } = await request.json();
 
     const normalizedEmail = email?.trim().toLowerCase();
     const normalizedUsername = username?.trim();
     const normalizedPhone = phone?.trim();
+
+    console.log("3. SIGNUP DATA:", {
+      username: normalizedUsername,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+    });
+
+    if (
+      !normalizedUsername ||
+      !normalizedEmail ||
+      !normalizedPhone ||
+      !password
+    ) {
+      return Response.json(
+        {
+          success: false,
+          message: "All fields are required",
+        },
+        { status: 400 }
+      );
+    }
 
     // Check verified username
     const existingUserVerifiedByUsername = await UserModel.findOne({
@@ -50,7 +74,8 @@ export async function POST(request: Request) {
         );
       }
 
-      // Update unverified user
+      console.log("4. UPDATING UNVERIFIED USER");
+
       const hashedPassword = await bcrypt.hash(password, 10);
 
       existingUserByEmail.username = normalizedUsername;
@@ -63,10 +88,11 @@ export async function POST(request: Request) {
 
       await existingUserByEmail.save();
     } else {
-      // Create new user
+      console.log("4. CREATING NEW USER");
+
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      const newUser = new UserModel({
+      await UserModel.create({
         username: normalizedUsername,
         email: normalizedEmail,
         phone: normalizedPhone,
@@ -77,11 +103,11 @@ export async function POST(request: Request) {
         ),
         isVerified: false,
       });
-
-      await newUser.save();
     }
 
-    // Send verification email
+    console.log("5. USER SAVED, CALLING EMAIL FUNCTION");
+    console.log("6. SENDING OTP TO:", normalizedEmail);
+
     const emailResponse = await sendVerificationEmail(
       normalizedEmail,
       normalizedPhone,
@@ -89,7 +115,7 @@ export async function POST(request: Request) {
       verifyCode
     );
 
-    console.log("EMAIL RESPONSE:", emailResponse);
+    console.log("7. EMAIL RESPONSE:", emailResponse);
 
     if (!emailResponse.success) {
       return Response.json(
@@ -110,7 +136,7 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error registering user:", error);
+    console.error("SIGNUP ERROR:", error);
 
     return Response.json(
       {
