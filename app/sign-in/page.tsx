@@ -119,7 +119,6 @@ export default function LoginPage() {
         </span>
       </div>
 
-      {/* LOGIN CARD */}
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg overflow-hidden">
         {/* HEADER */}
         <div className="px-8 pt-8 text-center">
