@@ -29,9 +29,7 @@ export const authOptions: NextAuthOptions = {
 
       async authorize(credentials) {
         try {
-          // ==========================================
-          // CHECK INPUT
-          // ==========================================
+
           const identifier = credentials?.identifier?.trim();
           const password = credentials?.password;
 
@@ -198,16 +196,11 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // ==========================================
-  // CUSTOM PAGES
-  // ==========================================
   pages: {
     signIn: "/sign-in",
   },
 
-  // ==========================================
-  // SECRET
-  // ==========================================
+
   secret: process.env.NEXTAUTH_SECRET,
 
   debug: process.env.NODE_ENV === "development",
