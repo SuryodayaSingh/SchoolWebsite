@@ -10,7 +10,7 @@ function Header() {
   return (
     <div>
       {/* Header */}
-      <div className="border border-black p-5 text-2xl font-semibold flex justify-between items-center bg-blue-100">
+      <div className="border border-black p-3 sm:p-5 text-lg sm:text-2xl font-semibold flex flex-wrap sm:justify-between items-center gap-3 bg-blue-100 w-full">
         
         <Image
           src={Logo}
@@ -46,7 +46,7 @@ function Header() {
         <Button
   variant="link"
   onClick={() => signOut({ callbackUrl: "/sign-in" })}
-  className="bg-indigo-400 font-bold text-white px-4"
+  className="bg-indigo-400 font-bold text-white px-1.5"
 >
   
   लॉग आउट

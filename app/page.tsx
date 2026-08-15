@@ -37,14 +37,15 @@ export default function Home() {
   return (
     <div>
       {/* Header */}
-      <div className="border border-black p-5 text-2xl font-semibold flex justify-between bg-blue-100">
-        <Image
-        src={Logo}
-        alt="Logo"
-        className="p-1 mr-3"
-         />
-
-        <div className="flex">
+    <div className="border border-black p-1 text-2xl font-semibold flex flex-wrap justify-between bg-blue-100 w-full max-w-full">
+  <Image 
+    src={Logo} 
+    alt="School Logo" 
+    width={900} 
+    height={900} 
+    className="w-32 h-32 sm:w-48 sm:h-48 object-contain"
+     />   
+      <div className="flex">
           <Link href="/">
             <Button variant="link" className="font-semibold">
               होम
@@ -78,8 +79,8 @@ export default function Home() {
       </div>
 
       {/* Hero Section */}
-      <div className="border border-black p-5 bg-blue-200">
-        <div className="flex">
+      <div className="border border-black p-5 bg-blue-200 flex flex-row items-center justify-between">
+        <div className="w-full md:w-1/2">
           <div className="flex flex-col">
         <span className="flex flex-col">
           आपका स्वागत है
@@ -112,13 +113,15 @@ export default function Home() {
           </Link>
         </div>
         </div>
-        <div className="flex">
-          <Image
-          src= {SchoolImage}
-          alt="Image"
-           />
-
-        </div>
+       <div className="w-full md:w-1/2 flex justify-center mt-6 md:mt-0">
+  <Image
+    src={SchoolImage}
+    alt="SchoolImage"
+    width={900}
+    height={900}
+    className="p-1 mr-3 w-64 h-48 sm:h-64 md:w-full md:h-auto rounded-lg object-contain"
+  />
+</div>
         </div>
       </div>
 
