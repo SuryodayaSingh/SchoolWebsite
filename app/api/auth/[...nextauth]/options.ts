@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
 
       credentials: {
         identifier: {
-          label: "Phone",
+          label: "Phone / Email / Username",
           type: "text",
         },
 
@@ -29,81 +29,98 @@ export const authOptions: NextAuthOptions = {
 
       async authorize(credentials) {
         try {
-          // -------------------------------
+          // ==========================================
           // CHECK INPUT
-          // -------------------------------
-          if (
-            !credentials?.identifier ||
-            !credentials?.password
-          ) {
-            throw new Error(
-              "Phone number and password are required"
-            );
+          // ==========================================
+          const identifier = credentials?.identifier?.trim();
+          const password = credentials?.password;
+
+          if (!identifier || !password) {
+            console.log("LOGIN ERROR: Missing identifier or password");
+            return null;
           }
 
-          const identifier =
-            credentials.identifier.trim();
+          console.log("LOGIN ATTEMPT:", identifier);
 
-          const password =
-            credentials.password;
-
-          // -------------------------------
-          // DATABASE
-          // -------------------------------
+          // ==========================================
+          // DATABASE CONNECT
+          // ==========================================
           await dbConnect();
 
-          // -------------------------------
+          // ==========================================
           // FIND USER
-          // -------------------------------
+          // ==========================================
           const user = await UserModel.findOne({
             $or: [
-              {
-                phone: identifier,
-              },
-              {
-                email: identifier.toLowerCase(),
-              },
-              {
-                username: identifier,
-              },
+              { phone: identifier },
+              { email: identifier.toLowerCase() },
+              { username: identifier },
             ],
           });
 
+          // ==========================================
+          // USER NOT FOUND
+          // ==========================================
           if (!user) {
-            throw new Error(
-              "Invalid phone number or password"
-            );
+            console.log("LOGIN ERROR: User not found");
+            return null;
           }
 
-          // -------------------------------
-          // CHECK ACCOUNT VERIFICATION
-          // -------------------------------
-          if (!user.isVerified) {
-            throw new Error(
-              "Please verify your account first"
+          console.log("USER FOUND:", {
+            id: user._id.toString(),
+            username: user.username,
+            email: user.email,
+            phone: user.phone,
+            isVerified: user.isVerified,
+            role: user.role,
+          });
+
+          // ==========================================
+          // ACCOUNT VERIFICATION
+          // ==========================================
+          if (user.isVerified !== true) {
+            console.log(
+              "LOGIN ERROR: Account is not verified"
             );
+            return null;
           }
 
-          // -------------------------------
-          // PASSWORD CHECK
-          // -------------------------------
-          const passwordCorrect =
-            await bcrypt.compare(
-              password,
-              user.password
+          // ==========================================
+          // CHECK PASSWORD
+          // ==========================================
+          if (!user.password) {
+            console.log(
+              "LOGIN ERROR: User password does not exist"
             );
+            return null;
+          }
+
+          const passwordCorrect = await bcrypt.compare(
+            password,
+            user.password
+          );
+
+          console.log(
+            "PASSWORD MATCH:",
+            passwordCorrect
+          );
 
           if (!passwordCorrect) {
-            throw new Error(
-              "Invalid phone number or password"
-            );
+            console.log("LOGIN ERROR: Incorrect password");
+            return null;
           }
 
-          // -------------------------------
-          // RETURN USER
-          // -------------------------------
+          // ==========================================
+          // LOGIN SUCCESS
+          // ==========================================
+          console.log(
+            "LOGIN SUCCESS:",
+            user.username
+          );
+
           return {
             id: user._id.toString(),
+            name: user.username,
             username: user.username,
             email: user.email,
             phone: user.phone,
@@ -137,7 +154,7 @@ export const authOptions: NextAuthOptions = {
   },
 
   // ==========================================
-  // JWT
+  // JWT + SESSION
   // ==========================================
   callbacks: {
     async jwt({ token, user }) {
@@ -193,8 +210,5 @@ export const authOptions: NextAuthOptions = {
   // ==========================================
   secret: process.env.NEXTAUTH_SECRET,
 
-  // ==========================================
-  // DEBUG
-  // ==========================================
   debug: process.env.NODE_ENV === "development",
 };
